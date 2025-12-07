@@ -53,7 +53,7 @@ if "latest_ml_alert" not in st.session_state:
 @st.cache_resource
 def load_ml_model(path):
     try:
-        return joblib.load(path)
+        return joblib.load(MODEL_PATH)
     except Exception as e:
         return None
 
@@ -189,23 +189,23 @@ if not st.session_state["log_df"].empty:
     
     col1, col2, col3, col4, col5 = st.columns(5)
     
-    # KOREKSI 1: TEMPERATURE
+    # KOREKSI 1: TEMPERATURE (Warna Biru)
     col1.markdown(f"""
-        <div style="background-color: lightgray; padding: 10px; border-radius: 5px; color: black; text-align: center; border-left: 5px solid green;">
-            <p style="margin: 0; font-size: 14px; font-weight: bold;">TEMPERATURE (°C)</p>
-            <h3 style="margin: 0; font-weight: bold; color: green;">{latest_data['temp']:.2f}</h3>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # KOREKSI 2: HUMIDITY
-    col2.markdown(f"""
         <div style="background-color: lightgray; padding: 10px; border-radius: 5px; color: black; text-align: center; border-left: 5px solid blue;">
-            <p style="margin: 0; font-size: 14px; font-weight: bold;">HUMIDITY (%)</p>
-            <h3 style="margin: 0; font-weight: bold; color: blue;">{latest_data['hum']:.2f}</h3>
+            <p style="margin: 0; font-size: 14px; font-weight: bold;">TEMPERATURE (°C)</p>
+            <h3 style="margin: 0; font-weight: bold; color: blue;">{latest_data['temp']:.2f}</h3>
         </div>
     """, unsafe_allow_html=True)
 
-    # ML Status 
+    # KOREKSI 2: HUMIDITY (Warna Hijau)
+    col2.markdown(f"""
+        <div style="background-color: lightgray; padding: 10px; border-radius: 5px; color: black; text-align: center; border-left: 5px solid green;">
+            <p style="margin: 0; font-size: 14px; font-weight: bold;">HUMIDITY (%)</p>
+            <h3 style="margin: 0; font-weight: bold; color: green;">{latest_data['hum']:.2f}</h3>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # ML Status (Warna Merah/Biru/Hijau - Tidak Berubah)
     pred = latest_data['pred']
     proba = latest_data['proba']
     if pred == "Panas":
@@ -226,7 +226,7 @@ if not st.session_state["log_df"].empty:
         </div>
     """, unsafe_allow_html=True)
 
-    # Status Anomali 
+    # Status Anomali (Tidak Berubah)
     anomaly_status = "⚠️ ANOMALI" if latest_data['anomaly'] else "OK"
     anomaly_bg_color = "yellow" if latest_data['anomaly'] else "lightgray"
     anomaly_text_color = "black" if latest_data['anomaly'] else "green"
@@ -239,7 +239,7 @@ if not st.session_state["log_df"].empty:
         </div>
     """, unsafe_allow_html=True)
     
-    # Status Aksi LED (Actuator)
+    # Status Aksi LED (Actuator) (Tidak Berubah)
     led_status = latest_data.get("alert_status", "N/A")
     color = "red" if led_status == "ALERT_ON" else "green"
     
@@ -256,46 +256,34 @@ df_plot = st.session_state["log_df"].copy()
 if not df_plot.empty:
     
     fig = go.Figure()
-    # KOREKSI 3: Garis Suhu (GREEN)
+    
+    # KOREKSI 3: Garis Suhu (BLUE) dan Marker Warna SAMA (Blue)
     fig.add_trace(go.Scatter(x=df_plot["ts"], y=df_plot["temp"], 
                              mode="lines+markers", 
                              name="Temp (°C)",
-                             line=dict(color='green', width=3))) 
+                             line=dict(color='blue', width=3),
+                             marker=dict(size=10, color='blue', line=dict(width=1, color='black')))) 
     
-    # KOREKSI 4: Garis Kelembaban (BLUE)
+    # KOREKSI 4: Garis Kelembaban (GREEN) dan Marker Warna SAMA (Green)
     fig.add_trace(go.Scatter(x=df_plot["ts"], y=df_plot["hum"], 
                              mode="lines+markers", 
                              name="Hum (%)", 
-                             yaxis="y2",
-                             line=dict(color='blue', width=3))) 
+                             # yaxis2 dihapus untuk single axis
+                             line=dict(color='green', width=3),
+                             marker=dict(size=10, color='green', line=dict(width=1, color='black')))) 
                              
     fig.update_layout(
         xaxis=dict(tickformat="%H:%M:%S"),
-        yaxis=dict(title="Temp (°C)", showgrid=True),
-        yaxis2=dict(title="Humidity (%)", overlaying="y", side="right", showgrid=False),
+        # KOREKSI 5: Single Y-Axis (1-100 scale)
+        yaxis=dict(title="Skala Gabungan (0-100)", 
+                   showgrid=True,
+                   range=[0, 100]), 
         height=520,
         plot_bgcolor='rgba(240, 240, 240, 0.5)'
     )
 
-    # KOREKSI 5: Marker Colors (Kontras dengan garis, menggunakan warna prediksi ML)
-    colors = []
-    for _, r in df_plot.iterrows():
-        pred = r.get("pred", "")
-        anomaly = r.get("anomaly", False)
-        
-        if anomaly:
-            colors.append("magenta") # Anomali: Magenta
-        elif pred == "Panas":
-            colors.append("red") # Panas: Merah
-        elif pred == "Dingin":
-            colors.append("blue") # Dingin: Biru
-        elif pred == "Normal":
-            colors.append("green") # Normal: Hijau
-        else:
-            colors.append("gray")
-            
-    # Marker dibuat lebih besar dan bergaris hitam untuk kontras visual
-    fig.update_traces(marker=dict(size=10, color=colors, line=dict(width=1, color='black')), selector=dict(mode="lines+markers"))
+    # Note: Logika pewarnaan marker berdasarkan prediksi ML dihapus dan diganti dengan warna garis (blue/green)
+    
     st.plotly_chart(fig, use_container_width=True)
 else:
     st.info("No data yet. Make sure ESP32 publishes to correct topic.")
@@ -306,10 +294,9 @@ col_log, col_export = st.columns([3, 1])
 with col_log:
     col_log.markdown("### Recent Logs")
     if not st.session_state["log_df"].empty:
-        # KOREKSI 6: Tabel Log Lengkap dan Terurut
+        # Tabel Log Lengkap dan Terurut
         df_log = st.session_state["log_df"].tail(10).copy()
         
-        # Mapping nama kolom yang diminta ke nama kolom di DataFrame
         column_order = ["ts", "temp", "hum", "pred", "alert_status", "anomaly", "proba", "score"]
         column_names = {
             "ts": "Timestamp",
