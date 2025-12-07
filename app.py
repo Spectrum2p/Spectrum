@@ -127,8 +127,11 @@ def process_buffer_and_update_ui():
 
         new_df = pd.DataFrame(new_data_list)
         st.session_state["log_df"] = pd.concat([st.session_state["log_df"], new_df], ignore_index=True)
-        if len(st.session_state["log_df"]) > 100:
-            st.session_state["log_df"] = st.session_state["log_df"].iloc[-100:]
+        
+        # --- LOGIKA PEMBATASAN DATA (DIHILANGKAN) ---
+        # if len(st.session_state["log_df"]) > 100:
+        #     st.session_state["log_df"] = st.session_state["log_df"].iloc[-100:]
+        # ---------------------------------------------
 
 def publish_output_control():
     client = st.session_state.get("mqtt_client")
@@ -189,7 +192,7 @@ if not st.session_state["log_df"].empty:
     
     col1, col2, col3, col4, col5 = st.columns(5)
     
-    # KOREKSI 1: TEMPERATURE (Warna Biru)
+    # TEMPERATURE (Warna Biru)
     col1.markdown(f"""
         <div style="background-color: lightgray; padding: 10px; border-radius: 5px; color: black; text-align: center; border-left: 5px solid blue;">
             <p style="margin: 0; font-size: 14px; font-weight: bold;">TEMPERATURE (°C)</p>
@@ -197,7 +200,7 @@ if not st.session_state["log_df"].empty:
         </div>
     """, unsafe_allow_html=True)
 
-    # KOREKSI 2: HUMIDITY (Warna Hijau)
+    # HUMIDITY (Warna Hijau)
     col2.markdown(f"""
         <div style="background-color: lightgray; padding: 10px; border-radius: 5px; color: black; text-align: center; border-left: 5px solid green;">
             <p style="margin: 0; font-size: 14px; font-weight: bold;">HUMIDITY (%)</p>
@@ -205,7 +208,7 @@ if not st.session_state["log_df"].empty:
         </div>
     """, unsafe_allow_html=True)
 
-    # ML Status (Warna Merah/Biru/Hijau - Tidak Berubah)
+    # ML Status (Warna Merah/Biru/Hijau)
     pred = latest_data['pred']
     proba = latest_data['proba']
     if pred == "Panas":
@@ -226,7 +229,7 @@ if not st.session_state["log_df"].empty:
         </div>
     """, unsafe_allow_html=True)
 
-    # Status Anomali (Tidak Berubah)
+    # Status Anomali 
     anomaly_status = "⚠️ ANOMALI" if latest_data['anomaly'] else "OK"
     anomaly_bg_color = "yellow" if latest_data['anomaly'] else "lightgray"
     anomaly_text_color = "black" if latest_data['anomaly'] else "green"
@@ -239,7 +242,7 @@ if not st.session_state["log_df"].empty:
         </div>
     """, unsafe_allow_html=True)
     
-    # Status Aksi LED (Actuator) (Tidak Berubah)
+    # Status Aksi LED (Actuator)
     led_status = latest_data.get("alert_status", "N/A")
     color = "red" if led_status == "ALERT_ON" else "green"
     
@@ -257,32 +260,29 @@ if not df_plot.empty:
     
     fig = go.Figure()
     
-    # KOREKSI 3: Garis Suhu (BLUE) dan Marker Warna SAMA (Blue)
+    # Garis Suhu (BLUE) dan Marker Warna SAMA (Blue)
     fig.add_trace(go.Scatter(x=df_plot["ts"], y=df_plot["temp"], 
                              mode="lines+markers", 
                              name="Temp (°C)",
                              line=dict(color='blue', width=3),
                              marker=dict(size=10, color='blue', line=dict(width=1, color='black')))) 
     
-    # KOREKSI 4: Garis Kelembaban (GREEN) dan Marker Warna SAMA (Green)
+    # Garis Kelembaban (GREEN) dan Marker Warna SAMA (Green)
     fig.add_trace(go.Scatter(x=df_plot["ts"], y=df_plot["hum"], 
                              mode="lines+markers", 
                              name="Hum (%)", 
-                             # yaxis2 dihapus untuk single axis
                              line=dict(color='green', width=3),
                              marker=dict(size=10, color='green', line=dict(width=1, color='black')))) 
                              
     fig.update_layout(
         xaxis=dict(tickformat="%H:%M:%S"),
-        # KOREKSI 5: Single Y-Axis (1-100 scale)
+        # Single Y-Axis (1-100 scale)
         yaxis=dict(title="Skala Gabungan (0-100)", 
                    showgrid=True,
                    range=[0, 100]), 
         height=520,
         plot_bgcolor='rgba(240, 240, 240, 0.5)'
     )
-
-    # Note: Logika pewarnaan marker berdasarkan prediksi ML dihapus dan diganti dengan warna garis (blue/green)
     
     st.plotly_chart(fig, use_container_width=True)
 else:
@@ -292,10 +292,10 @@ st.markdown("---")
 col_log, col_export = st.columns([3, 1])
 
 with col_log:
-    col_log.markdown("### Recent Logs")
+    col_log.markdown("### Full Data Logs")
     if not st.session_state["log_df"].empty:
-        # Tabel Log Lengkap dan Terurut
-        df_log = st.session_state["log_df"].tail(10).copy()
+        # Menampilkan semua data yang disimpan (tanpa batas 100)
+        df_log = st.session_state["log_df"].copy()
         
         column_order = ["ts", "temp", "hum", "pred", "alert_status", "anomaly", "proba", "score"]
         column_names = {
