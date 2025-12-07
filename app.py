@@ -155,7 +155,7 @@ publish_output_control()
 # ---------------------------\
 st.set_page_config(layout="wide", page_title="IoT Temperature Monitoring & Control")
 
-# Sidebar (Tidak Berubah)
+# ... (Sidebar Code - No Change)
 st.sidebar.title("Configuration")
 if st.session_state.get("is_connected"):
     st.sidebar.success("MQTT Connected!")
@@ -183,25 +183,25 @@ st.title("🌡️ Real-Time IoT Temperature Monitoring & Control")
 if HAS_AUTOREFRESH:
     st_autorefresh(interval=500, key="data_refresh_trigger")
 
-# Metrics Display
+# Metrics Display (Menggunakan custom HTML/Markdown untuk kontras)
 if not st.session_state["log_df"].empty:
     latest_data = st.session_state["log_df"].iloc[-1]
     
     col1, col2, col3, col4, col5 = st.columns(5)
     
-    # --- KOREKSI 1: TEMPERATURE (Kontras Tinggi) ---
+    # KOREKSI 1: TEMPERATURE
     col1.markdown(f"""
-        <div style="background-color: lightgray; padding: 10px; border-radius: 5px; color: black; text-align: center; border-left: 5px solid #ff4b4b;">
+        <div style="background-color: lightgray; padding: 10px; border-radius: 5px; color: black; text-align: center; border-left: 5px solid green;">
             <p style="margin: 0; font-size: 14px; font-weight: bold;">TEMPERATURE (°C)</p>
-            <h3 style="margin: 0; font-weight: bold; color: #ff4b4b;">{latest_data['temp']:.2f}</h3>
+            <h3 style="margin: 0; font-weight: bold; color: green;">{latest_data['temp']:.2f}</h3>
         </div>
     """, unsafe_allow_html=True)
 
-    # --- KOREKSI 2: HUMIDITY (Kontras Tinggi) ---
+    # KOREKSI 2: HUMIDITY
     col2.markdown(f"""
-        <div style="background-color: lightgray; padding: 10px; border-radius: 5px; color: black; text-align: center; border-left: 5px solid #1f77b4;">
+        <div style="background-color: lightgray; padding: 10px; border-radius: 5px; color: black; text-align: center; border-left: 5px solid blue;">
             <p style="margin: 0; font-size: 14px; font-weight: bold;">HUMIDITY (%)</p>
-            <h3 style="margin: 0; font-weight: bold; color: #1f77b4;">{latest_data['hum']:.2f}</h3>
+            <h3 style="margin: 0; font-weight: bold; color: blue;">{latest_data['hum']:.2f}</h3>
         </div>
     """, unsafe_allow_html=True)
 
@@ -226,7 +226,7 @@ if not st.session_state["log_df"].empty:
         </div>
     """, unsafe_allow_html=True)
 
-    # Status Anomali (Menambah background kuning)
+    # Status Anomali 
     anomaly_status = "⚠️ ANOMALI" if latest_data['anomaly'] else "OK"
     anomaly_bg_color = "yellow" if latest_data['anomaly'] else "lightgray"
     anomaly_text_color = "black" if latest_data['anomaly'] else "green"
@@ -256,13 +256,13 @@ df_plot = st.session_state["log_df"].copy()
 if not df_plot.empty:
     
     fig = go.Figure()
-    # Garis Suhu (KOREKSI 3: Warna Merah Tebal)
+    # KOREKSI 3: Garis Suhu (GREEN)
     fig.add_trace(go.Scatter(x=df_plot["ts"], y=df_plot["temp"], 
                              mode="lines+markers", 
                              name="Temp (°C)",
-                             line=dict(color='red', width=3))) 
+                             line=dict(color='green', width=3))) 
     
-    # Garis Kelembaban (KOREKSI 4: Warna Biru Tebal)
+    # KOREKSI 4: Garis Kelembaban (BLUE)
     fig.add_trace(go.Scatter(x=df_plot["ts"], y=df_plot["hum"], 
                              mode="lines+markers", 
                              name="Hum (%)", 
@@ -274,27 +274,27 @@ if not df_plot.empty:
         yaxis=dict(title="Temp (°C)", showgrid=True),
         yaxis2=dict(title="Humidity (%)", overlaying="y", side="right", showgrid=False),
         height=520,
-        # KOREKSI 5: Latar Belakang Grafik Lebih Kontras
-        plot_bgcolor='rgba(240, 240, 240, 0.5)' # Latar belakang abu-abu muda transparan
+        plot_bgcolor='rgba(240, 240, 240, 0.5)'
     )
 
-    # Marker Colors (Sudah Dikoreksi Sebelumnya)
+    # KOREKSI 5: Marker Colors (Kontras dengan garis, menggunakan warna prediksi ML)
     colors = []
     for _, r in df_plot.iterrows():
         pred = r.get("pred", "")
         anomaly = r.get("anomaly", False)
         
         if anomaly:
-            colors.append("magenta")
+            colors.append("magenta") # Anomali: Magenta
         elif pred == "Panas":
-            colors.append("red")
+            colors.append("red") # Panas: Merah
         elif pred == "Dingin":
-            colors.append("blue")
+            colors.append("blue") # Dingin: Biru
         elif pred == "Normal":
-            colors.append("green")
+            colors.append("green") # Normal: Hijau
         else:
             colors.append("gray")
             
+    # Marker dibuat lebih besar dan bergaris hitam untuk kontras visual
     fig.update_traces(marker=dict(size=10, color=colors, line=dict(width=1, color='black')), selector=dict(mode="lines+markers"))
     st.plotly_chart(fig, use_container_width=True)
 else:
@@ -306,7 +306,25 @@ col_log, col_export = st.columns([3, 1])
 with col_log:
     col_log.markdown("### Recent Logs")
     if not st.session_state["log_df"].empty:
-        st.dataframe(st.session_state["log_df"].tail(10), use_container_width=True)
+        # KOREKSI 6: Tabel Log Lengkap dan Terurut
+        df_log = st.session_state["log_df"].tail(10).copy()
+        
+        # Mapping nama kolom yang diminta ke nama kolom di DataFrame
+        column_order = ["ts", "temp", "hum", "pred", "alert_status", "anomaly", "proba", "score"]
+        column_names = {
+            "ts": "Timestamp",
+            "temp": "Temp (°C)",
+            "hum": "Hum (%)",
+            "pred": "Prediction",
+            "alert_status": "Alert Status",
+            "anomaly": "Anomaly",
+            "proba": "Confidence",
+            "score": "Anomaly Score"
+        }
+        
+        df_display = df_log[column_order].rename(columns=column_names)
+        
+        st.dataframe(df_display, use_container_width=True)
 
 with col_export:
     st.markdown("### Export Data")
